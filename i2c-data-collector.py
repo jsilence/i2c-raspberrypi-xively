@@ -2,13 +2,13 @@
 
 import os
 import xively
-import subprocess
 from time import sleep
 import datetime
 import requests
 
-# i2c sensors
+# sensors and probes
 import smbus
+import psutil
 
 bus = smbus.SMBus(1)
 
@@ -25,7 +25,7 @@ api = xively.XivelyAPIClient(API_KEY)
 def read_loadavg():
   if DEBUG:
     print "Reading load average"
-  return subprocess.check_output(["awk '{print $1}' /proc/loadavg"], shell=True)
+  return psutil.cpu_percent()
 
 # function to read sensor
 def read_sensor():
