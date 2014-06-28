@@ -12,7 +12,6 @@ import psutil
 
 bus = smbus.SMBus(1)
 
-
 # extract feed_id and api_key from environment variables
 FEED_ID = os.environ["FEED_ID"]
 API_KEY = os.environ["API_KEY"]
@@ -21,7 +20,8 @@ DEBUG = os.environ["DEBUG"] or false
 # initialize api client
 api = xively.XivelyAPIClient(API_KEY)
 
-# function to read 1 minute load average from psutil
+
+# function to read load average from psutil
 def read_loadavg():
   if DEBUG:
     print "Reading load average"
@@ -59,7 +59,7 @@ def get_datastream(feed, channel):
 
 # main program entry point - runs continuously updating our datastream with the
 # current 1 minute load average
-def run():
+def main():
   print "Starting Xively script"
 
   feed = api.feeds.get(FEED_ID)
@@ -93,4 +93,6 @@ def run():
 
     time.sleep(10)
 
-run()
+if __name__ == "__main__":
+    main()
+
