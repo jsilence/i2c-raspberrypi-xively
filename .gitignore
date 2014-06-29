@@ -5,6 +5,9 @@ __pycache__/
 # emacs backup files
 *~
 
+# a place for snippets
+ignore/
+
 # C extensions
 *.so
 
