@@ -64,13 +64,13 @@ def main():
   feed = api.feeds.get(FEED_ID)
 
   # setting up datastreams
-  channels = ['load_avg', 'pressure', 'temperature', 'humidity']
+  channels = ['load_avg', 'pressure', 'temperature', 'sht21_humidity', 'sht21_temperature']
   for channel in channels:
     datastreams[channel] = get_datastream(feed, channel)
     datastreams[channel].max_value = None
     datastreams[channel].min_value = None
 
-  mqchannel.basic_qos(prefetch_count=1) # only process one message at a time
+#  mqchannel.basic_qos(prefetch_count=1) # only process one message at a time
   mqchannel.basic_consume(mqcallback, queue='probedata')
 
   try:

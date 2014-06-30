@@ -7,11 +7,13 @@ import json
 
 import smbus
 import psutil
+import sht21
 
 import pika
 
 # sensors and probes
 bus = smbus.SMBus(1)
+sht21 = sht21.SHT21(1)
 
 # persistent queue with rabbitMQ
 # @todo wrap in try/catch. https://github.com/jsilence/i2c-raspberrypi-xively/issues/1
@@ -52,20 +54,13 @@ def read_temperature():
   (temp, press) = read_barometric_sensor()
   return round(temp, 2)
 
-def read_humidity():
-  if DEBUG:
-    print "Resetting humidity sensor"
-  bus.write_byte(0x40, 0xFE)
-  time.sleep(0.5)
-  bus.write_byte(0x40, 0xF5)
-  time.sleep(0.5)
-  reading = bus.read_byte(0x40)
-  # @todo calculate relative humidity from raw reading. https://github.com/jsilence/i2c-raspberrypi-xively/issues/2
-  # @see: http://www.sensirion.com/fileadmin/user_upload/customers/sensirion/Dokumente/Humidity/Sensirion_Humidity_SHT21_Datasheet_V4.pdf
-  # @see: https://github.com/jaques/sht21_python/blob/master/sht21.py
-  return reading
+def read_sht21_humidity():
+  return sht21.read_humidity()
 
-probes = {'humidity':read_humidity, 'load_avg':read_loadavg, 'pressure':read_pressure, 'temperature':read_temperature }
+def read_sht21_temperature():
+  return round(sht21.read_temperature(),2)
+
+probes = {'sht21_humidity':read_sht21_humidity,'sht21_temperature':read_sht21_temperature, 'load_avg':read_loadavg, 'pressure':read_pressure, 'temperature':read_temperature }
 
 # main program entry point - runs continuously updating our datastream with the
 # current 1 minute load average
