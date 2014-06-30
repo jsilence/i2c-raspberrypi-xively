@@ -14,7 +14,7 @@ import pika
 connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 mqchannel = connection.channel()
 # @todo: split into different MQ channels for each probe
-mqchannel.queue_declare(queue='probedata')
+mqchannel.queue_declare(queue='probedata', durable=True)
 
 # extract feed_id and api_key from environment variables
 FEED_ID = os.environ["FEED_ID"]
@@ -53,6 +53,7 @@ def mqcallback(ch, method, properties, body):
     datastreams[datapoint[0]].at = datetime.datetime.fromtimestamp(datapoint[1])
     try:
         datastreams[datapoint[0]].update()
+        ch.basic_ack(delivery_tag = method.delivery_tag)
     except requests.HTTPError as e:
         print "HTTPError({0}): {1}".format(e.errno, e.strerror)
 
@@ -63,15 +64,14 @@ def main():
   feed = api.feeds.get(FEED_ID)
 
   # setting up datastreams
-  channels = ['load_avg', 'pressure', 'temperature']
+  channels = ['load_avg', 'pressure', 'temperature', 'sht21_humidity', 'sht21_temperature']
   for channel in channels:
     datastreams[channel] = get_datastream(feed, channel)
     datastreams[channel].max_value = None
     datastreams[channel].min_value = None
 
-  # @todo: use delivery confirmations: 
-  # http://pika.readthedocs.org/en/latest/examples/blocking_delivery_confirmations.html
-  mqchannel.basic_consume(mqcallback, queue='probedata', no_ack=True)
+#  mqchannel.basic_qos(prefetch_count=1) # only process one message at a time
+  mqchannel.basic_consume(mqcallback, queue='probedata')
 
   try:
     mqchannel.start_consuming()

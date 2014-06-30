@@ -7,17 +7,19 @@ import json
 
 import smbus
 import psutil
+import sht21
 
 import pika
 
 # sensors and probes
 bus = smbus.SMBus(1)
+sht21 = sht21.SHT21(1)
 
 # persistent queue with rabbitMQ
-# @todo wrap in try/catch
+# @todo wrap in try/catch. https://github.com/jsilence/i2c-raspberrypi-xively/issues/1
 connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 mqchannel = connection.channel()
-mqchannel.queue_declare(queue='probedata')
+mqchannel.queue_declare(queue='probedata', durable=True)
 
 # extract feed_id and api_key from environment variables
 DEBUG = os.environ["DEBUG"] or false
@@ -29,12 +31,12 @@ def read_loadavg():
     print "Reading load average"
   return psutil.cpu_percent()
 
-# function to read sensor
+# functions to read sensors
 def read_barometric_sensor():
   if DEBUG:
     print "Waking pressure sensor"
   bus.write_i2c_block_data(0x60, 0x12, [0x01])
-  time.sleep(2)
+  time.sleep(0.5)
   if DEBUG:
     print "Reading temperature and pressure data"
   bus.write_byte(0x60, 0x00)
@@ -52,7 +54,13 @@ def read_temperature():
   (temp, press) = read_barometric_sensor()
   return round(temp, 2)
 
-probes = {'load_avg':read_loadavg, 'pressure':read_pressure, 'temperature':read_temperature }
+def read_sht21_humidity():
+  return sht21.read_humidity()
+
+def read_sht21_temperature():
+  return round(sht21.read_temperature(),2)
+
+probes = {'sht21_humidity':read_sht21_humidity,'sht21_temperature':read_sht21_temperature, 'load_avg':read_loadavg, 'pressure':read_pressure, 'temperature':read_temperature }
 
 # main program entry point - runs continuously updating our datastream with the
 # current 1 minute load average
@@ -68,9 +76,13 @@ def main():
     # read data from probes and pipe into RabbitMQ
     for probe in probes:
       datapoint = json.dumps([probe, now, probes[probe]()])
-      mqchannel.basic_publish(exchange='', routing_key='probedata', body=datapoint)
+      mqchannel.basic_publish(exchange='', 
+                              routing_key='probedata', 
+                              body=datapoint,
+                              properties=pika.BasicProperties(
+          delivery_mode = 2, )) # make message persistent
 
-    time.sleep(6)
+    time.sleep(56)
 
 if __name__ == "__main__":
     main()
