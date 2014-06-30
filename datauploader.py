@@ -70,8 +70,7 @@ def main():
     datastreams[channel].max_value = None
     datastreams[channel].min_value = None
 
-  # @todo: use delivery confirmations: https://github.com/jsilence/i2c-raspberrypi-xively/issues/3
-  # http://pika.readthedocs.org/en/latest/examples/blocking_delivery_confirmations.html
+  mqchannel.basic_qos(prefetch_count=1) # only process one message at a time
   mqchannel.basic_consume(mqcallback, queue='probedata')
 
   try:
