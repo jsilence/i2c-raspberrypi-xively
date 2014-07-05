@@ -82,7 +82,7 @@ def main():
                               properties=pika.BasicProperties(
           delivery_mode = 2, )) # make message persistent
 
-    time.sleep(56)
+    time.sleep(116)
 
 if __name__ == "__main__":
     main()

@@ -44,18 +44,20 @@ def mqcallback(ch, method, properties, body):
     Documentation: http://www.rabbitmq.com/tutorials/tutorial-one-python.html
     The default json encoder can not encode datetime.datetime objects, thus the date
     is converted to UNIX timestamps."""
-
+    time.sleep(2)
     # data comes in order: channel, timestamp, value
     datapoint = json.loads(body)
     if DEBUG:
-        print "received %s %s %s " % (datapoint[0], datapoint[1], datapoint[2])
+      print "received %s %s %s " % (datapoint[0], datapoint[1], datapoint[2])
     datastreams[datapoint[0]].current_value = datapoint[2]
     datastreams[datapoint[0]].at = datetime.datetime.fromtimestamp(datapoint[1])
     try:
-        datastreams[datapoint[0]].update()
-        ch.basic_ack(delivery_tag = method.delivery_tag)
+      datastreams[datapoint[0]].update()
+      ch.basic_ack(delivery_tag = method.delivery_tag)
     except requests.HTTPError as e:
-        print "HTTPError({0}): {1}".format(e.errno, e.strerror)
+      print "HTTPError({0}): {1}".format(e.errno, e.strerror)
+    except requests.exceptions.ConnectionError as e:
+      print "ConnectionError({0}): {1}".format(e.errno, e.strerror)
 
 # main program entry point - runs continuously 
 def main():
@@ -68,7 +70,7 @@ def main():
   for channel in channels:
     datastreams[channel] = get_datastream(feed, channel)
     datastreams[channel].max_value = None
-    datastreams[channel].min_value = None
+    datastreams[channel].min_value = 0
 
 #  mqchannel.basic_qos(prefetch_count=1) # only process one message at a time
   mqchannel.basic_consume(mqcallback, queue='probedata')
