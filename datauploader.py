@@ -48,7 +48,7 @@ def on_disconnect(mosq, obj, rc):
     print("Disconnected successfully.")
   if rc != 0:
     print("Disconnected unexpectedly with return code %s. Reconnecting." % rc)
-    mqttc.connect("localhost", 1883, 60)
+    mqttc.reconnect()
 
 def on_message(mqttc, userdata, msg):
     """Callback function reads json encoded datapoints from MQTT broker.
