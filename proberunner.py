@@ -1,23 +1,28 @@
 #!/usr/bin/env python
 
 import os
+from sys import exit
 import time
 import datetime
 import json
 
 import smbus
 import psutil
+import sht21
 
-import pika
+import paho.mqtt.client as mqtt
 
 # sensors and probes
 bus = smbus.SMBus(1)
+sht21 = sht21.SHT21(1)
 
-# persistent queue with rabbitMQ
-# @todo wrap in try/catch
-connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-mqchannel = connection.channel()
-mqchannel.queue_declare(queue='probedata')
+# persistent queue with MQTT
+# @todo wrap in try/catch. https://github.com/jsilence/i2c-raspberrypi-xively/issues/1
+mqttc = mqtt.Client()
+mqttc.will_set("jspilence/status/prober", "jspilence prober disconnected unexpectedly", 2, True )
+mqttc.connect("localhost", 1883, 60)
+mqttc.loop_start()
+
 
 # extract feed_id and api_key from environment variables
 DEBUG = os.environ["DEBUG"] or false
@@ -29,12 +34,12 @@ def read_loadavg():
     print "Reading load average"
   return psutil.cpu_percent()
 
-# function to read sensor
+# functions to read sensors
 def read_barometric_sensor():
   if DEBUG:
     print "Waking pressure sensor"
   bus.write_i2c_block_data(0x60, 0x12, [0x01])
-  time.sleep(2)
+  time.sleep(0.5)
   if DEBUG:
     print "Reading temperature and pressure data"
   bus.write_byte(0x60, 0x00)
@@ -52,7 +57,17 @@ def read_temperature():
   (temp, press) = read_barometric_sensor()
   return round(temp, 2)
 
-probes = {'load_avg':read_loadavg, 'pressure':read_pressure, 'temperature':read_temperature }
+def read_sht21_humidity():
+  return sht21.read_humidity()
+
+def read_sht21_temperature():
+  return round(sht21.read_temperature(),2)
+
+probes = {'sht21_humidity':read_sht21_humidity,
+          'sht21_temperature':read_sht21_temperature, 
+          'load_avg':read_loadavg, 
+          'pressure':read_pressure, 
+          'temperature':read_temperature }
 
 # main program entry point - runs continuously updating our datastream with the
 # current 1 minute load average
@@ -65,12 +80,16 @@ def main():
     if DEBUG:
       print "UNIX timestamp: %s"  % now
 
-    # read data from probes and pipe into RabbitMQ
-    for probe in probes:
-      datapoint = json.dumps([probe, now, probes[probe]()])
-      mqchannel.basic_publish(exchange='', routing_key='probedata', body=datapoint)
-
-    time.sleep(6)
+    try:
+      # read data from probes and pipe into MQTT broker
+      for probe in probes:
+        datapoint = json.dumps([probe, now, probes[probe]()])
+        mqttc.publish("jspilence/probedata/%s" % probe, datapoint, 0, True)
+      time.sleep(36)
+    except KeyboardInterrupt:
+      print "exiting..."
+      mqttc.disconnect()
+      exit(0)
 
 if __name__ == "__main__":
     main()
