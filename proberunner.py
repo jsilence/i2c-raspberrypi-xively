@@ -38,7 +38,7 @@ def read_loadavg():
 def read_pressure():
   if DEBUG:
     print "reading barometric pressure"
-  return round(mpl115a2.read_pressure(), 2)
+  return mpl115a2.pressure(20)
 
 def read_humidity():
   if DEBUG:
