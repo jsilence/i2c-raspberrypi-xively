@@ -15,7 +15,7 @@ import mpl115a2
 
 # sensors and probes
 bus = smbus.SMBus(1)
-sht21 = sht21.SHT21(1)
+sht21 = sht21.SHT21(bus)
 mpl115a2 = mpl115a2.MPL115A2(bus)
 
 # persistent queue with MQTT
