@@ -85,7 +85,7 @@ def main():
   mqttc.connect("localhost", 1883, 60)
 
   # setting up datastreams
-  channels = ['load_avg', 'pressure', 'temperature', 'sht21_humidity', 'sht21_temperature']
+  channels = ['load_avg', 'pressure', 'temperature', 'humidity', 'temperature']
   for channel in channels:
     mqttc.subscribe("jspilence/probedata/%s" % channel, 1)
     datastreams[channel] = get_datastream(feed, channel)
